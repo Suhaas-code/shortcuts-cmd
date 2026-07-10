@@ -1,5 +1,11 @@
 # Installer for `shortcuts` (Windows PowerShell / cmd).
-#   irm https://github.com/Suhaas-code/Shortcuts-cmd/releases/latest/download/install.ps1 | iex
+#   Install:   irm https://github.com/Suhaas-code/Shortcuts-cmd/releases/latest/download/install.ps1 | iex
+#   Uninstall: & ([scriptblock]::Create((irm .../install.ps1))) -Uninstall
+#              (or set $env:SHORTCUTS_UNINSTALL=1 before the install one-liner)
+param(
+    [switch] $Uninstall,
+    [switch] $Yes
+)
 $ErrorActionPreference = 'Stop'
 
 $REPO     = 'Suhaas-code/Shortcuts-cmd'
@@ -13,6 +19,40 @@ function Info($m) { Write-Host "==> $m" -ForegroundColor Cyan }
 function Get-File($url, $dest) {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing
+}
+
+# Removes every trace of shortcuts. Touches ONLY shortcuts' own files.
+function Invoke-Uninstall([bool] $skipConfirm) {
+    Write-Host 'This will remove shortcuts completely:'
+    Write-Host "  program:  $ProgDir"
+    Write-Host "  config:   $CfgDir (including your customized shortcuts)"
+    Write-Host '  PATH:     the shortcuts entry in your User PATH'
+    if (-not $skipConfirm) {
+        $ans = Read-Host 'Proceed? [y/N]'
+        if ($ans -notmatch '^(y|yes)$') { Write-Host 'cancelled'; return }
+    }
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if ($userPath) {
+        $new = (@($userPath -split ';' | Where-Object { $_ -and $_ -ne $ProgDir }) -join ';')
+        if ($new -ne $userPath) {
+            [Environment]::SetEnvironmentVariable('Path', $new, 'User')
+            Info 'Removed shortcuts from your User PATH'
+        }
+    }
+    if ((Test-Path $CfgDir) -and ($CfgDir -match '[\\/]shortcuts$')) {
+        Remove-Item -Recurse -Force $CfgDir; Info "Removed $CfgDir"
+    }
+    if ((Test-Path $ProgDir) -and ($ProgDir -match '[\\/]shortcuts$')) {
+        Remove-Item -Recurse -Force $ProgDir; Info "Removed $ProgDir"
+    }
+    Write-Host ''
+    Write-Host 'shortcuts uninstalled.' -ForegroundColor Green
+    Write-Host 'Open a new terminal to drop the PATH change.'
+}
+
+if ($Uninstall -or $env:SHORTCUTS_UNINSTALL) {
+    Invoke-Uninstall ($Yes -or $env:SHORTCUTS_YES)
+    return
 }
 
 Info 'Installing shortcuts...'

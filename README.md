@@ -61,7 +61,10 @@ Opening shortcuts in the default editor...
 - **Customizable colors** — set section/key/description/code colors right inside
   the data file with `// color` lines (see [Customizing](#customizing)).
 - **Self-maintaining** — `shortcuts update` pulls the latest script; `shortcuts reset`
-  restores the defaults; `shortcuts path` tells you where your file lives.
+  restores the defaults; `shortcuts path` tells you where your file lives; and
+  `shortcuts uninstall` cleanly removes everything it installed.
+- **Neofetch-style `version`** — an ASCII banner showing the version, your current
+  shell/OS environment, shortcut counts, color palette, and the project link.
 - **Respects your terminal** — color turns off automatically when piped or when
   `NO_COLOR` is set.
 
@@ -96,10 +99,31 @@ one-line command to enable it in your **current** shell without restarting.
 | `shortcuts path` | Print the data file path |
 | `shortcuts reset [-y]` | Restore the default shortcuts |
 | `shortcuts update` | Update the `shortcuts` script itself |
-| `shortcuts version` | Print the version |
+| `shortcuts version` | Show a neofetch-style banner: version, environment, shortcut counts |
+| `shortcuts uninstall [-y]` | Remove shortcuts completely (script, config, PATH entry) |
 | `shortcuts help` | Show help |
 
 `shortcuts help` starts with a one-line usage summary, then the full table above.
+
+### Uninstalling
+
+`shortcuts uninstall` removes **everything** it installed and nothing else — the
+script, your `shortcuts` config directory, and the single PATH line/entry the
+installer added. It never deletes shared directories like `~/.local/bin`. Add
+`-y` to skip the confirmation prompt.
+
+You can also uninstall straight from the installers, handy if the command isn't
+on your `PATH`:
+
+```powershell
+# Windows
+& ([scriptblock]::Create((irm https://github.com/Suhaas-code/Shortcuts-cmd/releases/latest/download/install.ps1))) -Uninstall
+```
+
+```bash
+# Linux · macOS · WSL · Git Bash
+curl -fsSL https://github.com/Suhaas-code/Shortcuts-cmd/releases/latest/download/install.sh | bash -s -- --uninstall
+```
 
 ## Customizing
 

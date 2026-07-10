@@ -22,6 +22,40 @@ fetch() { # url dest
   fi
 }
 
+# Removes every trace of shortcuts. Touches ONLY shortcuts' own files.
+uninstall() {
+  local yes="" ans f tmp bin="$BIN_DIR/shortcuts"
+  case "${1:-}" in -y|--yes) yes=1 ;; esac
+  printf 'This will remove shortcuts completely:\n'
+  printf '  script:  %s\n' "$bin"
+  printf '  config:  %s (including your customized shortcuts)\n' "$CONFIG_DIR"
+  printf '  PATH:    the line added to your shell profile\n'
+  if [ -z "$yes" ]; then
+    printf 'Proceed? [y/N] '
+    read -r ans
+    case "$ans" in y|Y|yes|YES) ;; *) die "cancelled" ;; esac
+  fi
+  case "$CONFIG_DIR" in */shortcuts) [ -d "$CONFIG_DIR" ] && rm -rf "$CONFIG_DIR" && info "Removed $CONFIG_DIR" ;; esac
+  [ -f "$bin" ] && rm -f "$bin" && info "Removed $bin"
+  for f in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.profile"; do
+    [ -f "$f" ] || continue
+    grep -q 'Added by shortcuts installer' "$f" 2>/dev/null || continue
+    tmp="$(mktemp)"
+    awk '
+      /# Added by shortcuts installer/ { mark=1; next }
+      mark==1 { mark=0; if ($0 ~ /\.local\/bin/) next }
+      { print }
+    ' "$f" > "$tmp" && cat "$tmp" > "$f" && rm -f "$tmp"
+    info "Cleaned PATH entry from $f"
+  done
+  printf '\n\033[1;32mshortcuts uninstalled.\033[0m Open a new shell to drop the PATH change.\n'
+  exit 0
+}
+
+case "${1:-}" in
+  --uninstall|uninstall|remove) shift; uninstall "${1:-}" ;;
+esac
+
 info "Installing shortcuts..."
 mkdir -p "$BIN_DIR" "$CONFIG_DIR"
 

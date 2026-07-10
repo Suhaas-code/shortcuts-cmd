@@ -3,7 +3,7 @@
 # https://github.com/Suhaas-code/Shortcuts-cmd
 set -euo pipefail
 
-VERSION="1.1.0"
+VERSION="1.2.0"
 REPO="Suhaas-code/Shortcuts-cmd"
 BASE_URL="https://github.com/${REPO}/releases/latest/download"
 
@@ -174,6 +174,25 @@ render() {
   '
 }
 
+# --- environment detection -------------------------------------------------
+# Sets ENV_NAME (current shell environment), OS_NAME, SHELL_NAME.
+detect_env() {
+  if [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null; then
+    OS_NAME="Linux (WSL)"; ENV_NAME="WSL"
+  else
+    case "$(uname -s 2>/dev/null)" in
+      Darwin)        OS_NAME="macOS"; ENV_NAME="Terminal" ;;
+      MINGW*|MSYS*)  OS_NAME="Windows"; ENV_NAME="Git Bash" ;;
+      CYGWIN*)       OS_NAME="Windows"; ENV_NAME="Cygwin" ;;
+      Linux)         OS_NAME="Linux"; ENV_NAME="Terminal" ;;
+      *)             OS_NAME="$(uname -s 2>/dev/null || echo Unknown)"; ENV_NAME="shell" ;;
+    esac
+  fi
+  if [ -n "${BASH_VERSION:-}" ]; then SHELL_NAME="bash ${BASH_VERSION%%[^0-9.]*}"
+  elif [ -n "${ZSH_VERSION:-}" ]; then SHELL_NAME="zsh ${ZSH_VERSION}"
+  else SHELL_NAME="$(basename "${SHELL:-sh}")"; fi
+}
+
 # --- commands --------------------------------------------------------------
 cmd_list()   { ensure_data; parse_color_directives "$(data_file)"; render "" < "$(data_file)"; }
 cmd_search() {
@@ -218,9 +237,117 @@ cmd_update() {
   printf 'Updated shortcuts at %s\n' "$dest"
 }
 
+# neofetch-style banner for `shortcuts version`.
+cmd_version() {
+  local df rst hdr nsec=0 nrow=0 counts
+  df="$(data_file)"
+  [ "$COLOR_ON" = 1 ] && rst=$'\033[0m' || rst=""
+  if [ -f "$df" ]; then
+    parse_color_directives "$df"
+    counts="$(awk '/^[[:space:]]*$/{next}/^[[:space:]]*\/\//{next}/^[[:space:]]*#/{s++;next}{r++}END{print (s+0)"|"(r+0)}' "$df")"
+    nsec="${counts%%|*}"; nrow="${counts##*|}"
+  fi
+  hdr="$(ansi_seq "$SPEC_HDR")"
+
+  local ENV_NAME OS_NAME SHELL_NAME
+  detect_env
+
+  local host editor palette
+  host="$(hostname 2>/dev/null || echo localhost)"
+  editor="${VISUAL:-${EDITOR:-}}"; [ -n "$editor" ] || editor="nano/vim/vi (auto)"
+  palette="$(ansi_seq "$SPEC_HDR")header${rst} $(ansi_seq "$SPEC_KEY")key${rst} $(ansi_seq "$SPEC_DESC")desc${rst} $(ansi_seq "$SPEC_CODE")code${rst}"
+
+  local LOGO INFO
+  LOGO=(
+'   ___________________________'
+'  |  _______________________  |'
+'  | |                       | |'
+'  | |   >_ shortcuts        | |'
+'  | |_______________________| |'
+'  |   ___   ___   ___   ___   |'
+'  |  |Ctl| |Alt| |Sft| |Tab|  |'
+'  |  |___| |___| |___| |___|  |'
+'  |___________________________|'
+'      |_______________________|'
+  )
+  INFO=(
+"${hdr}shortcuts${rst}@${hdr}${host}${rst}"
+"-----------------------------"
+"Version      ${VERSION}"
+"Environment  ${ENV_NAME}"
+"OS           ${OS_NAME}"
+"Shell        ${SHELL_NAME}"
+"Shortcuts    ${nrow} in ${nsec} sections"
+"Editor       ${editor}"
+"Data         ${df}"
+"Palette      ${palette}"
+"GitHub       https://github.com/${REPO}"
+"             ^ star & contribute to support!"
+  )
+
+  local w=0 l
+  for l in "${LOGO[@]}"; do [ "${#l}" -gt "$w" ] && w=${#l}; done
+
+  local n=${#INFO[@]} m=${#LOGO[@]} max i logo info padded
+  max=$n; [ "$m" -gt "$max" ] && max=$m
+  echo
+  for ((i=0; i<max; i++)); do
+    logo="${LOGO[i]:-}"; info="${INFO[i]:-}"
+    printf -v padded '%-*s' "$w" "$logo"
+    if [ -n "$logo" ] && [ "$COLOR_ON" = 1 ]; then
+      printf '%s%s%s   %s\n' "$hdr" "$padded" "$rst" "$info"
+    else
+      printf '%s   %s\n' "$padded" "$info"
+    fi
+  done
+  echo
+}
+
+# Removes every trace of shortcuts: the installed script, the config dir, and the
+# PATH line the installer added. Touches ONLY shortcuts' own files.
+cmd_uninstall() {
+  local yes="" cfg bin ans
+  case "${1:-}" in -y|--yes) yes=1 ;; esac
+  cfg="$(config_dir)"
+  bin="$(command -v shortcuts 2>/dev/null || true)"
+  [ -n "$bin" ] || bin="$HOME/.local/bin/shortcuts"
+
+  printf 'This will remove shortcuts completely:\n'
+  printf '  script:  %s\n' "$bin"
+  printf '  config:  %s (including your customized shortcuts)\n' "$cfg"
+  printf '  PATH:    the line added to your shell profile\n'
+  if [ -z "$yes" ]; then
+    printf 'Proceed? [y/N] '
+    read -r ans
+    case "$ans" in y|Y|yes|YES) ;; *) die "cancelled" ;; esac
+  fi
+
+  # 1) config dir — namespaced to shortcuts, safe to remove wholesale
+  case "$cfg" in */shortcuts) [ -d "$cfg" ] && rm -rf "$cfg" && printf 'Removed %s\n' "$cfg" ;; esac
+
+  # 2) installed script (a single file)
+  [ -f "$bin" ] && rm -f "$bin" && printf 'Removed %s\n' "$bin"
+
+  # 3) PATH line added by the installer (marker + the following .local/bin line)
+  local f tmp
+  for f in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.profile"; do
+    [ -f "$f" ] || continue
+    grep -q 'Added by shortcuts installer' "$f" 2>/dev/null || continue
+    tmp="$(mktemp)"
+    awk '
+      /# Added by shortcuts installer/ { mark=1; next }
+      mark==1 { mark=0; if ($0 ~ /\.local\/bin/) next }
+      { print }
+    ' "$f" > "$tmp" && cat "$tmp" > "$f" && rm -f "$tmp"
+    printf 'Cleaned PATH entry from %s\n' "$f"
+  done
+
+  printf '\nshortcuts uninstalled. Open a new shell to drop the PATH change.\n'
+}
+
 cmd_help() {
   cat <<EOF
-Usage: shortcuts [search <term>|edit|path|reset [-y]|update|version|help]
+Usage: shortcuts [search <term>|edit|path|reset [-y]|update|version|uninstall|help]
 
 shortcuts — customizable keyboard-shortcut reference (v${VERSION})
 
@@ -230,7 +357,8 @@ shortcuts — customizable keyboard-shortcut reference (v${VERSION})
   shortcuts path            Print the data file path
   shortcuts reset [-y]      Restore the default shortcuts
   shortcuts update          Update the shortcuts script itself
-  shortcuts version         Print version
+  shortcuts version         Show version + environment info
+  shortcuts uninstall [-y]  Remove shortcuts completely
   shortcuts help            Show this help
 
 Data file: $(data_file)
@@ -245,7 +373,8 @@ main() {
     path|where)         cmd_path ;;
     reset)              shift; cmd_reset "${1:-}" ;;
     update|upgrade)     cmd_update ;;
-    version|-v|--version) printf 'shortcuts %s\n' "$VERSION" ;;
+    version|-v|--version) cmd_version ;;
+    uninstall|remove)   shift; cmd_uninstall "${1:-}" ;;
     help|-h|--help)     cmd_help ;;
     *)                  printf 'shortcuts: unknown command "%s"\n\n' "$1" >&2; cmd_help >&2; exit 1 ;;
   esac

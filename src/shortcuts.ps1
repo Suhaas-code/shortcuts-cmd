@@ -7,7 +7,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$VERSION  = '1.1.0'
+$VERSION  = '1.2.0'
 $REPO     = 'Suhaas-code/Shortcuts-cmd'
 $BASE_URL = "https://github.com/$REPO/releases/latest/download"
 
@@ -169,9 +169,9 @@ function Invoke-Edit {
     & $ed $df
 }
 
-function Invoke-Reset([string[]] $args) {
+function Invoke-Reset([string[]] $Argv) {
     $df = Get-DataFile
-    $yes = ($args -contains '-y') -or ($args -contains '--yes')
+    $yes = ($Argv -contains '-y') -or ($Argv -contains '--yes')
     if ((Test-Path $df) -and (-not $yes)) {
         $ans = Read-Host "Overwrite $df with defaults? [y/N]"
         if ($ans -notmatch '^(y|yes)$') { Die 'cancelled' }
@@ -188,6 +188,124 @@ function Invoke-Update {
     Write-Host "Updated shortcuts at $dest"
 }
 
+# neofetch-style banner for `shortcuts version`.
+function Show-Version {
+    $df = Get-DataFile
+    $nsec = 0; $nrow = 0
+    if (Test-Path $df) {
+        $lines = Get-Content -LiteralPath $df
+        Read-ColorDirectives $lines
+        foreach ($ln in $lines) {
+            if ($ln -match '^\s*$' -or $ln -match '^\s*//') { continue }
+            if ($ln -match '^\s*#') { $nsec++ } else { $nrow++ }
+        }
+    }
+    $cH = ConvertTo-Ansi $script:SpecHeader
+    $rst = $script:Rst
+
+    $edition = $PSVersionTable.PSEdition
+    $envName = if ($edition -eq 'Core') { 'PowerShell' } else { 'Windows PowerShell' }
+    $osName = if ($PSVersionTable.PSVersion.Major -ge 6) {
+        if ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Windows' }
+    } else { 'Windows' }
+    $shellName = "$envName $($PSVersionTable.PSVersion)"
+    $host_ = $env:COMPUTERNAME; if (-not $host_) { $host_ = 'localhost' }
+    $editor = if ($env:EDITOR) { $env:EDITOR } else { 'notepad' }
+    $palette = (Format-Colored (ConvertTo-Ansi $script:SpecHeader) 'header') + ' ' +
+               (Format-Colored (ConvertTo-Ansi $script:SpecKey) 'key') + ' ' +
+               (Format-Colored (ConvertTo-Ansi $script:SpecDesc) 'desc') + ' ' +
+               (Format-Colored (ConvertTo-Ansi $script:SpecCode) 'code')
+
+    $logo = @(
+        '   ___________________________'
+        '  |  _______________________  |'
+        '  | |                       | |'
+        '  | |   >_ shortcuts        | |'
+        '  | |_______________________| |'
+        '  |   ___   ___   ___   ___   |'
+        '  |  |Ctl| |Alt| |Sft| |Tab|  |'
+        '  |  |___| |___| |___| |___|  |'
+        '  |___________________________|'
+        '      |_______________________|'
+    )
+    $info = @(
+        (Format-Colored $cH 'shortcuts') + '@' + (Format-Colored $cH $host_)
+        '-----------------------------'
+        "Version      $VERSION"
+        "Environment  $envName"
+        "OS           $osName"
+        "Shell        $shellName"
+        "Shortcuts    $nrow in $nsec sections"
+        "Editor       $editor"
+        "Data         $df"
+        "Palette      $palette"
+        "GitHub       https://github.com/$REPO"
+        '             ^ star & contribute to support!'
+    )
+    $w = ($logo | Measure-Object -Property Length -Maximum).Maximum
+    $max = [Math]::Max($logo.Count, $info.Count)
+    Write-Host ''
+    for ($i = 0; $i -lt $max; $i++) {
+        $l = if ($i -lt $logo.Count) { $logo[$i] } else { '' }
+        $r = if ($i -lt $info.Count) { $info[$i] } else { '' }
+        $padded = $l.PadRight($w)
+        if ($l) { Write-Host ((Format-Colored $cH $padded) + '   ' + $r) }
+        else    { Write-Host ($padded + '   ' + $r) }
+    }
+    Write-Host ''
+}
+
+# Removes every trace of shortcuts: program dir, config dir, and the User PATH entry.
+# Touches ONLY shortcuts' own files.
+function Invoke-Uninstall([string[]] $Argv) {
+    $progDir = Join-Path $env:LOCALAPPDATA 'Programs\shortcuts'
+    $cfgDir  = Get-ConfigDir
+    $yes = ($Argv -contains '-y') -or ($Argv -contains '--yes')
+
+    Write-Host 'This will remove shortcuts completely:'
+    Write-Host "  program:  $progDir"
+    Write-Host "  config:   $cfgDir (including your customized shortcuts)"
+    Write-Host '  PATH:     the shortcuts entry in your User PATH'
+    if (-not $yes) {
+        $ans = Read-Host 'Proceed? [y/N]'
+        if ($ans -notmatch '^(y|yes)$') { Die 'cancelled' }
+    }
+
+    # 1) User PATH — drop only the shortcuts program dir
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if ($userPath) {
+        $kept = @($userPath -split ';' | Where-Object { $_ -and $_ -ne $progDir })
+        $new = ($kept -join ';')
+        if ($new -ne $userPath) {
+            [Environment]::SetEnvironmentVariable('Path', $new, 'User')
+            Write-Host 'Removed shortcuts from your User PATH'
+        }
+    }
+
+    # 2) config dir (namespaced to shortcuts)
+    if ((Test-Path $cfgDir) -and ($cfgDir -match '[\\/]shortcuts$')) {
+        Remove-Item -Recurse -Force $cfgDir
+        Write-Host "Removed $cfgDir"
+    }
+
+    # 3) program dir — holds the currently-running script; delete what we can and
+    #    schedule the rest for removal on next shell if the file is still locked.
+    if ((Test-Path $progDir) -and ($progDir -match '[\\/]shortcuts$')) {
+        try {
+            Remove-Item -Recurse -Force $progDir -ErrorAction Stop
+            Write-Host "Removed $progDir"
+        } catch {
+            # self-delete fallback: a detached cmd waits, then removes the dir
+            Start-Process -WindowStyle Hidden cmd.exe `
+                -ArgumentList '/c', 'timeout', '/t', '2', '/nobreak', '>nul', '&', 'rmdir', '/s', '/q', "`"$progDir`"" | Out-Null
+            Write-Host "Scheduled removal of $progDir"
+        }
+    }
+
+    Write-Host ''
+    Write-Host 'shortcuts uninstalled. Open a new terminal to drop the PATH change.'
+}
+
 function Show-Help {
     @"
 Usage: shortcuts [search <term>|edit|path|reset [-y]|update|version|help]
@@ -200,7 +318,8 @@ shortcuts — customizable keyboard-shortcut reference (v$VERSION)
   shortcuts path            Print the data file path
   shortcuts reset [-y]      Restore the default shortcuts
   shortcuts update          Update the shortcuts script itself
-  shortcuts version         Print version
+  shortcuts version         Show version + environment info
+  shortcuts uninstall [-y]  Remove shortcuts completely
   shortcuts help            Show this help
 
 Data file: $(Get-DataFile)
@@ -218,7 +337,8 @@ switch ($Command.ToLower()) {
     { $_ -in 'path','where' } { Write-Host (Get-DataFile) }
     'reset'     { Invoke-Reset $Rest }
     { $_ -in 'update','upgrade' } { Invoke-Update }
-    { $_ -in 'version','-v','--version' } { Write-Host "shortcuts $VERSION" }
+    { $_ -in 'version','-v','--version' } { Show-Version }
+    { $_ -in 'uninstall','remove' } { Invoke-Uninstall $Rest }
     { $_ -in 'help','-h','--help' } { Show-Help }
     default     { Write-Host "shortcuts: unknown command `"$Command`"`n"; Show-Help; exit 1 }
 }
