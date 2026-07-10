@@ -71,13 +71,13 @@ Opening shortcuts in the default editor...
 **Windows** (PowerShell):
 
 ```powershell
-irm https://github.com/Suhaas-code/Shortcuts-cmd/releases/latest/download/install.ps1 | iex
+irm https://github.com/Suhaas-code/shortcuts-cmd/releases/latest/download/install.ps1 | iex
 ```
 
 **Linux · macOS · WSL · Git Bash**:
 
 ```bash
-curl -fsSL https://github.com/Suhaas-code/Shortcuts-cmd/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/Suhaas-code/shortcuts-cmd/releases/latest/download/install.sh | bash
 ```
 
 The installer drops the script somewhere on your `PATH` and seeds a default
@@ -115,12 +115,12 @@ on your `PATH`:
 
 ```powershell
 # Windows
-& ([scriptblock]::Create((irm https://github.com/Suhaas-code/Shortcuts-cmd/releases/latest/download/install.ps1))) -Uninstall
+& ([scriptblock]::Create((irm https://github.com/Suhaas-code/shortcuts-cmd/releases/latest/download/install.ps1))) -Uninstall
 ```
 
 ```bash
 # Linux · macOS · WSL · Git Bash
-curl -fsSL https://github.com/Suhaas-code/Shortcuts-cmd/releases/latest/download/install.sh | bash -s -- --uninstall
+curl -fsSL https://github.com/Suhaas-code/shortcuts-cmd/releases/latest/download/install.sh | bash -s -- --uninstall
 ```
 
 ## Customizing

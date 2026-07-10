@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # shortcuts — a customizable keyboard-shortcut reference
-# https://github.com/Suhaas-code/Shortcuts-cmd
+# https://github.com/Suhaas-code/shortcuts-cmd
 set -euo pipefail
 
 VERSION="1.2.0"
-REPO="Suhaas-code/Shortcuts-cmd"
+REPO="Suhaas-code/shortcuts-cmd"
 BASE_URL="https://github.com/${REPO}/releases/latest/download"
 
 # --- paths -----------------------------------------------------------------

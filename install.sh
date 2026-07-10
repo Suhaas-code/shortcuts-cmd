@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Installer for `shortcuts` (Linux / macOS / WSL / Git Bash).
-#   curl -fsSL https://github.com/Suhaas-code/Shortcuts-cmd/releases/latest/download/install.sh | bash
+#   curl -fsSL https://github.com/Suhaas-code/shortcuts-cmd/releases/latest/download/install.sh | bash
 set -euo pipefail
 
-REPO="Suhaas-code/Shortcuts-cmd"
+REPO="Suhaas-code/shortcuts-cmd"
 BASE_URL="https://github.com/${REPO}/releases/latest/download"
 BIN_DIR="$HOME/.local/bin"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/shortcuts"

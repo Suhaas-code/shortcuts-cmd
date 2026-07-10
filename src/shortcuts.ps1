@@ -1,5 +1,5 @@
 # shortcuts — a customizable keyboard-shortcut reference
-# https://github.com/Suhaas-code/Shortcuts-cmd
+# https://github.com/Suhaas-code/shortcuts-cmd
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)] [string] $Command = '',
@@ -8,7 +8,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $VERSION  = '1.2.0'
-$REPO     = 'Suhaas-code/Shortcuts-cmd'
+$REPO     = 'Suhaas-code/shortcuts-cmd'
 $BASE_URL = "https://github.com/$REPO/releases/latest/download"
 
 function Get-ConfigDir { Join-Path $env:APPDATA 'shortcuts' }

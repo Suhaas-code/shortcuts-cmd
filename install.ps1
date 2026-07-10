@@ -1,5 +1,5 @@
 # Installer for `shortcuts` (Windows PowerShell / cmd).
-#   Install:   irm https://github.com/Suhaas-code/Shortcuts-cmd/releases/latest/download/install.ps1 | iex
+#   Install:   irm https://github.com/Suhaas-code/shortcuts-cmd/releases/latest/download/install.ps1 | iex
 #   Uninstall: & ([scriptblock]::Create((irm .../install.ps1))) -Uninstall
 #              (or set $env:SHORTCUTS_UNINSTALL=1 before the install one-liner)
 param(
@@ -8,7 +8,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-$REPO     = 'Suhaas-code/Shortcuts-cmd'
+$REPO     = 'Suhaas-code/shortcuts-cmd'
 $BASE_URL = "https://github.com/$REPO/releases/latest/download"
 $ProgDir  = Join-Path $env:LOCALAPPDATA 'Programs\shortcuts'
 $CfgDir   = Join-Path $env:APPDATA 'shortcuts'
