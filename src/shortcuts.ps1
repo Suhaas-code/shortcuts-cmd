@@ -288,18 +288,13 @@ function Invoke-Uninstall([string[]] $Argv) {
         Write-Host "Removed $cfgDir"
     }
 
-    # 3) program dir — holds the currently-running script; delete what we can and
-    #    schedule the rest for removal on next shell if the file is still locked.
+    # 3) program dir — this holds the shortcuts.cmd/shortcuts.ps1 that is running
+    #    right now. Deleting it inline would yank the file out from under the shell.
+    #    Hand off to a detached cmd that waits for this process to exit, then removes it.
     if ((Test-Path $progDir) -and ($progDir -match '[\\/]shortcuts$')) {
-        try {
-            Remove-Item -Recurse -Force $progDir -ErrorAction Stop
-            Write-Host "Removed $progDir"
-        } catch {
-            # self-delete fallback: a detached cmd waits, then removes the dir
-            Start-Process -WindowStyle Hidden cmd.exe `
-                -ArgumentList '/c', 'timeout', '/t', '2', '/nobreak', '>nul', '&', 'rmdir', '/s', '/q', "`"$progDir`"" | Out-Null
-            Write-Host "Scheduled removal of $progDir"
-        }
+        Start-Process cmd.exe -WindowStyle Hidden `
+            -ArgumentList "/c ping 127.0.0.1 -n 3 >nul & rmdir /s /q `"$progDir`"" | Out-Null
+        Write-Host "Removed $progDir"
     }
 
     Write-Host ''
