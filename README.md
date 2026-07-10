@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>⌨️ shortcuts</h1>
+  <h1>Shortcuts</h1>
   <p><em>Your personal keyboard-shortcut cheat sheet, one command away — in every shell</em></p>
 </div>
 
@@ -23,17 +23,14 @@
 
 ---
 
-You're mid-flow in a terminal and blank on the shortcut to split a pane, jump
-to end-of-line, or search scrollback — so you alt-tab to a notes app, dig
-through a wiki, or search the web, and lose the thread. The shortcut you need
-is never in the terminal you need it in.
+### Your shortcuts, always one command away.
 
-`shortcuts` fixes that: it's a tiny command that prints your own personal
-cheat sheet, grouped into sections and neatly aligned, right where you're
-already working — then lets you edit that list in your favorite editor. It
-behaves **identically** on Windows PowerShell, cmd, Linux, macOS, WSL, and
-Git Bash because every environment reads the same plain-text data file. No
-runtime, no dependencies, one script per platform.
+You're in the middle of a task when your mind blanks on a shortcut. Split a pane. Jump to the end of a line. Search scrollback. Instead of doing what you were doing, you leave the terminal, search on google, ask your AI, dig through notes, or worst case, skim documentation. The interruption costs more than the ease the shortcut ever had.
+
+**shortcuts** does what it says, it keeps what you need, where you work. The default command displays your personal cheat sheet in a clean, organized layout, one command instantly searches it, and another one opens it in your preferred editor. You can also keep personal notes, phone numbers, IP addresses, plaintext passwords, or anything else at a glance for your CLI.
+
+Powered by a single plain-text file, **shortcuts** works consistently across PowerShell, Command Prompt, Linux, macOS, WSL, and Git Bash. It runs entirely offline, never connects to the internet, and only updates when you explicitly run the update command. No runtime. No dependencies. Just a lightweight script for each platform.
+
 
 ```
 > shortcuts
