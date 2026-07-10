@@ -17,10 +17,50 @@ function Get-DataFile  { Join-Path (Get-ConfigDir) 'shortcuts.txt' }
 # --- colors ----------------------------------------------------------------
 $script:UseColor = (-not $env:NO_COLOR) -and (-not [Console]::IsOutputRedirected)
 $e = [char]27
-if ($script:UseColor) {
-    $C_HDR = "$e[1;36m"; $C_KEY = "$e[0;33m"; $C_RST = "$e[0m"
-} else {
-    $C_HDR = ''; $C_KEY = ''; $C_RST = ''
+$script:Rst = if ($script:UseColor) { "$e[0m" } else { '' }
+
+# Default color specs — overridable via `// color <target> = <spec>` in the data file.
+$script:SpecHeader = 'bold cyan'
+$script:SpecKey    = 'green'
+$script:SpecDesc   = 'default'
+
+$script:AnsiMap = @{
+    'bold' = 1; 'dim' = 2; 'italic' = 3; 'underline' = 4
+    'black' = 30; 'red' = 31; 'green' = 32; 'yellow' = 33
+    'blue' = 34; 'magenta' = 35; 'cyan' = 36; 'white' = 37
+    'gray' = 90; 'grey' = 90; 'bright-black' = 90; 'bright-red' = 91
+    'bright-green' = 92; 'bright-yellow' = 93; 'bright-blue' = 94
+    'bright-magenta' = 95; 'bright-cyan' = 96; 'bright-white' = 97
+}
+
+function ConvertTo-Ansi([string] $spec) {
+    if (-not $script:UseColor) { return '' }
+    $codes = @()
+    foreach ($t in ($spec -split '\s+')) {
+        if (-not $t -or $t -in 'default', 'none') { continue }
+        if ($script:AnsiMap.ContainsKey($t)) { $codes += $script:AnsiMap[$t] }
+    }
+    if ($codes.Count -eq 0) { return '' }
+    "$e[" + ($codes -join ';') + 'm'
+}
+
+function Read-ColorDirectives([string[]] $lines) {
+    foreach ($line in $lines) {
+        if ($line -notmatch '^\s*//') { continue }
+        if ($line -match '^\s*//\s*color\s+(\w+)\s*=?\s*(.*)$') {
+            $val = $Matches[2].Trim()
+            switch ($Matches[1].ToLower()) {
+                'header'      { $script:SpecHeader = $val }
+                'key'         { $script:SpecKey = $val }
+                'desc'        { $script:SpecDesc = $val }
+                'description' { $script:SpecDesc = $val }
+            }
+        }
+    }
+}
+
+function Format-Colored([string] $code, [string] $text) {
+    if ($code) { "$code$text$($script:Rst)" } else { $text }
 }
 
 function Die($msg) { Write-Error "shortcuts: $msg"; exit 1 }
@@ -45,12 +85,17 @@ function Confirm-Data {
 # Parses the data file into sections and prints aligned/colored output.
 function Show-Shortcuts([string] $Filter) {
     $lines = Get-Content -LiteralPath (Get-DataFile)
+    Read-ColorDirectives $lines
+    $cHdr = ConvertTo-Ansi $script:SpecHeader
+    $cKey = ConvertTo-Ansi $script:SpecKey
+    $cDesc = ConvertTo-Ansi $script:SpecDesc
     $sections = New-Object System.Collections.ArrayList
     $cur = $null
     $maxk = 0
 
     foreach ($line in $lines) {
         if ($line -match '^\s*$') { continue }
+        if ($line -match '^\s*//') { continue }
         if ($line -match '^#') {
             $cur = [ordered]@{ Name = ($line.Substring(1)).Trim(); Rows = (New-Object System.Collections.ArrayList) }
             [void]$sections.Add($cur)
@@ -84,12 +129,12 @@ function Show-Shortcuts([string] $Filter) {
         if ($rows.Count -eq 0) { continue }
         if (-not $first) { Write-Host '' }
         $first = $false
-        Write-Host "$C_HDR=== $($s.Name) ===$C_RST"
+        Write-Host (Format-Colored $cHdr "=== $($s.Name) ===")
         foreach ($r in $rows) {
             if ($r.Desc -eq '') {
-                Write-Host "$C_KEY$($r.Key)$C_RST"
+                Write-Host (Format-Colored $cKey $r.Key)
             } else {
-                Write-Host ("$C_KEY{0}$C_RST{1}" -f $r.Key.PadRight($pad), $r.Desc)
+                Write-Host ((Format-Colored $cKey $r.Key.PadRight($pad)) + (Format-Colored $cDesc $r.Desc))
             }
         }
     }

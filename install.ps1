@@ -43,6 +43,10 @@ if (($userPath -split ';') -notcontains $ProgDir) {
 }
 
 Write-Host ''
-Write-Host 'Done! Restart your terminal, then try:' -ForegroundColor Green
+Write-Host 'Done!' -ForegroundColor Green
+Write-Host 'Open a NEW terminal, or use it right now in this shell by running:'
+Write-Host "  `$env:Path += `";$ProgDir`"" -ForegroundColor Yellow
+Write-Host ''
+Write-Host 'Then try:'
 Write-Host '  shortcuts'
 Write-Host '  shortcuts edit'

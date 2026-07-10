@@ -1,3 +1,13 @@
+// shortcuts data file — a line starting with // is a comment (never shown).
+// Format: "# Section" for a header, then "key<TAB>description" for each row.
+//
+// Colors (edit these). Color names: black red green yellow blue magenta cyan
+// white gray, plus bright-* variants (e.g. bright-cyan). Styles: bold dim
+// italic underline. Combine with spaces. Use "default" for the terminal color.
+// color header = bold cyan
+// color key    = green
+// color desc   = default
+
 # Panes
 Alt + Shift + +	Split pane
 Alt + Shift + -	Split pane horizontally

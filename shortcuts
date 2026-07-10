@@ -17,13 +17,62 @@ data_file() {
 
 # --- colors ----------------------------------------------------------------
 # Disabled when NO_COLOR is set or stdout is not a terminal.
-if [ -n "${NO_COLOR:-}" ] || [ ! -t 1 ]; then
-  C_HDR="" ; C_KEY="" ; C_RST=""
-else
-  C_HDR=$'\033[1;36m'   # bold cyan
-  C_KEY=$'\033[0;33m'   # yellow
-  C_RST=$'\033[0m'
-fi
+if [ -n "${NO_COLOR:-}" ] || [ ! -t 1 ]; then COLOR_ON=0; else COLOR_ON=1; fi
+
+# Default color specs — overridable via `// color <target> = <spec>` in the data file.
+SPEC_HDR="bold cyan"
+SPEC_KEY="green"
+SPEC_DESC="default"
+
+ansi_code() { # color/style name -> SGR number ("" if unknown)
+  case "$1" in
+    bold) echo 1;; dim) echo 2;; italic) echo 3;; underline) echo 4;;
+    black) echo 30;; red) echo 31;; green) echo 32;; yellow) echo 33;;
+    blue) echo 34;; magenta) echo 35;; cyan) echo 36;; white) echo 37;;
+    gray|grey|bright-black) echo 90;; bright-red) echo 91;; bright-green) echo 92;;
+    bright-yellow) echo 93;; bright-blue) echo 94;; bright-magenta) echo 95;;
+    bright-cyan) echo 96;; bright-white) echo 97;;
+    *) echo "";;
+  esac
+}
+ansi_seq() { # "tokens..." -> escape sequence ("" if color off / empty / default)
+  [ "$COLOR_ON" = 1 ] || { printf ''; return; }
+  local codes="" t c
+  for t in $1; do
+    case "$t" in default|none) continue;; esac
+    c="$(ansi_code "$t")"
+    [ -n "$c" ] && codes="${codes:+$codes;}$c"
+  done
+  [ -n "$codes" ] && printf '\033[%sm' "$codes"
+}
+ltrim() { printf '%s' "${1#"${1%%[![:space:]]*}"}"; }
+rtrim() { printf '%s' "${1%"${1##*[![:space:]]}"}"; }
+
+parse_color_directives() { # file  — read `// color <target> = <spec>` lines
+  local ln rest target val
+  while IFS= read -r ln; do
+    rest="$(ltrim "$ln")"
+    case "$rest" in //*) rest="$(ltrim "${rest#//}")" ;; *) continue ;; esac
+    # require the 'color' keyword
+    case "$rest" in
+      color) continue ;;
+      color[[:space:]]*) rest="$(ltrim "${rest#color}")" ;;
+      *) continue ;;
+    esac
+    # split target/value on '=' if present, else on whitespace
+    case "$rest" in
+      *=*) target="${rest%%=*}"; val="${rest#*=}" ;;
+      *)   target="${rest%%[[:space:]]*}"; val="${rest#"$target"}" ;;
+    esac
+    target="$(printf '%s' "$target" | tr -d '[:space:]')"
+    val="$(rtrim "$(ltrim "$val")")"
+    case "$target" in
+      header) SPEC_HDR="$val";;
+      key) SPEC_KEY="$val";;
+      desc|description) SPEC_DESC="$val";;
+    esac
+  done < "$1"
+}
 
 die() { printf 'shortcuts: %s\n' "$1" >&2; exit 1; }
 
@@ -52,12 +101,18 @@ ensure_data() {
 # --- rendering -------------------------------------------------------------
 # Reads data on stdin, prints aligned/colored output. Optional $1 = filter term.
 render() {
-  local filter="${1:-}"
-  awk -v hdr="$C_HDR" -v key="$C_KEY" -v rst="$C_RST" -v filter="$filter" '
+  local filter="${1:-}" hdr key desc rst
+  hdr="$(ansi_seq "$SPEC_HDR")"
+  key="$(ansi_seq "$SPEC_KEY")"
+  desc="$(ansi_seq "$SPEC_DESC")"
+  [ "$COLOR_ON" = 1 ] && rst=$'\033[0m' || rst=""
+  awk -v HDR="$hdr" -v KEY="$key" -v DESC="$desc" -v RST="$rst" -v filter="$filter" '
     function trim(s){ sub(/^[ \t]+/,"",s); sub(/[ \t]+$/,"",s); return s }
+    function wrap(c,s){ return (c=="") ? s : c s RST }
     {
       line=$0
       if (line ~ /^[[:space:]]*$/) next
+      if (line ~ /^[[:space:]]*\/\//) next     # comment / directive line
       if (line ~ /^#/) {                       # section header
         sec=trim(substr(line,2))
         n_sec++; sec_name[n_sec]=sec; sec_rows[n_sec]=0
@@ -93,11 +148,11 @@ render() {
         if(cnt==0) continue
         if(!first) print ""
         first=0
-        printf "%s=== %s ===%s\n", hdr, sec_name[i], rst
+        print wrap(HDR, "=== " sec_name[i] " ===")
         for(m=1;m<=cnt;m++){
           j=mrows[m]; kk=rk[i,j]; dd=rd[i,j]
-          if(dd==""){ printf "%s%s%s\n", key, kk, rst }
-          else { printf "%s%-*s%s%s\n", key, pad, kk, rst, dd }
+          if(dd==""){ print wrap(KEY, kk) }
+          else { printf "%s%s\n", wrap(KEY, sprintf("%-*s", pad, kk)), wrap(DESC, dd) }
         }
       }
     }
@@ -105,10 +160,10 @@ render() {
 }
 
 # --- commands --------------------------------------------------------------
-cmd_list()   { ensure_data; render "" < "$(data_file)"; }
+cmd_list()   { ensure_data; parse_color_directives "$(data_file)"; render "" < "$(data_file)"; }
 cmd_search() {
   [ -n "${1:-}" ] || die "usage: shortcuts search <term>"
-  ensure_data; render "$1" < "$(data_file)"
+  ensure_data; parse_color_directives "$(data_file)"; render "$1" < "$(data_file)"
 }
 cmd_path()   { printf '%s\n' "$(data_file)"; }
 

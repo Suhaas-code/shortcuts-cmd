@@ -37,8 +37,9 @@ else
 fi
 
 # Ensure ~/.local/bin is on PATH.
+on_path=0
 case ":$PATH:" in
-  *":$BIN_DIR:"*) ;;
+  *":$BIN_DIR:"*) on_path=1 ;;
   *)
     line="export PATH=\"\$HOME/.local/bin:\$PATH\""
     rc=""
@@ -50,8 +51,12 @@ case ":$PATH:" in
       printf '\n# Added by shortcuts installer\n%s\n' "$line" >> "$rc"
       info "Added $BIN_DIR to PATH in $rc"
     fi
-    printf '\033[1;33mnote:\033[0m restart your shell or run: export PATH="$HOME/.local/bin:$PATH"\n'
     ;;
 esac
 
-printf '\n\033[1;32mDone!\033[0m Try:\n  shortcuts\n  shortcuts edit\n'
+printf '\n\033[1;32mDone!\033[0m\n'
+if [ "$on_path" -eq 0 ]; then
+  printf 'Open a NEW terminal, or use it right now in this shell by running:\n'
+  printf '  \033[1;33mexport PATH="%s:$PATH"\033[0m\n\n' "$BIN_DIR"
+fi
+printf 'Then try:\n  shortcuts\n  shortcuts edit\n'
