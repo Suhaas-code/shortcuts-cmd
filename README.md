@@ -1,7 +1,7 @@
 <div align="center">
   <img src="shortcuts-logo.jpg" alt="shortcuts" width="160">
   <h1>Shortcuts</h1>
-  <p><em>Your personal keyboard-shortcut cheat sheet, one command away — in every shell</em></p>
+  <p><em>Your personal keyboard-shortcut cheat sheet, one command away, in every shell</em></p>
 </div>
 
 <p align="center"><strong>one-line install · edit in your own editor · consistent output everywhere · zero runtime deps</strong></p>
