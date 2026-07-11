@@ -28,12 +28,12 @@
 
 You're in the middle of a task when your mind blanks on a shortcut. Split a
 pane. Jump to the end of a line. Search scrollback. Instead of staying in flow,
-you leave the terminal to search the web, ask your AI, or dig through notes —
-and the interruption costs more than the shortcut ever saved.
+you leave the terminal to search the web, or dig through notes or worse ask your AI,
+and the interruption costs more than ease the shortcut ever provided.
 
 **shortcuts** keeps what you need where you work. One command prints your
 personal cheat sheet in a clean, aligned, colored layout; another searches it;
-another opens it in your editor. Keep shortcuts, notes, IPs — anything you want
+another opens it in your editor. Keep shortcuts, notes, IPs, or plaintext passwords anything you want
 a glance away in your CLI.
 
 Powered by a single plain-text file and one lightweight script per platform, it
@@ -56,7 +56,7 @@ curl -fsSL https://github.com/Suhaas-code/shortcuts-cmd/releases/latest/download
 
 The installer puts `shortcuts` on your `PATH` and seeds a default list matched
 to your environment. Open a new terminal, or run the one-liner it prints to use
-it in the current shell. Re-running is safe — it never overwrites your edits.
+it in the current shell. Re-running is safe - it never overwrites your edits.
 
 → Full details, uninstalling, and file locations: **[docs/installation.md](docs/installation.md)**.
 
