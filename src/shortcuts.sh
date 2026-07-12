@@ -3,7 +3,7 @@
 # https://github.com/Suhaas-code/shortcuts-cmd
 set -euo pipefail
 
-VERSION="1.5.0"
+VERSION="1.5.1"
 REPO="Suhaas-code/shortcuts-cmd"
 BASE_URL="https://github.com/${REPO}/releases/latest/download"
 
@@ -421,36 +421,47 @@ tool_block() { # exe -> section text (heading + `key`<TAB>desc rows)
   printf '# %s\n' "$(tool_name "$1")"
   case "$1" in
     claude)
-      aa_row '`/help`'       'Show slash commands'
-      aa_row '`/clear`'      'Clear conversation history'
-      aa_row '`/model`'      'Switch the active model'
-      aa_row '`Esc`'         'Interrupt Claude'
-      aa_row '`Ctrl` + `C`'  'Quit' ;;
+      aa_row '`/model`'        'Switch the active model'
+      aa_row '`/clear`'        'Start a fresh conversation'
+      aa_row '`/diff`'         'View uncommitted changes'
+      aa_row '`Ctrl` + `C`'    'Cancel current operation'
+      aa_row '`Esc`'           'Cancel input'
+      aa_row '`Ctrl` + `J`'    'Insert a newline'
+      aa_row '`Ctrl` + `D`'    'Exit Claude Code' ;;
     codex)
-      aa_row '`/help`'       'Show commands'
-      aa_row '`/model`'      'Change the model'
-      aa_row '`/clear`'      'Clear the conversation'
-      aa_row '`Esc`'         'Interrupt'
-      aa_row '`Ctrl` + `C`'  'Quit' ;;
+      aa_row '`/model`'             'Change model & reasoning effort'
+      aa_row '`/approvals`'         'Set what Codex can do'
+      aa_row '`/init`'             'Create an AGENTS.md file'
+      aa_row '`/new`'              'Start a new chat'
+      aa_row '`/diff`'             'Show the git diff'
+      aa_row '`Esc`'               'Interrupt the current task'
+      aa_row '`Ctrl` + `C` (twice)' 'Quit Codex' ;;
     opencode)
-      aa_row '`/help`'       'Show help'
-      aa_row '`/models`'     'Switch model'
-      aa_row '`/clear`'      'Clear the session'
-      aa_row '`/init`'       'Initialize the project'
-      aa_row '`Ctrl` + `C`'  'Quit' ;;
+      aa_row '`/init`'       'Set up an AGENTS.md file'
+      aa_row '`/new`'        'Start a new session'
+      aa_row '`/models`'     'List and switch model'
+      aa_row '`/sessions`'   'Switch sessions'
+      aa_row '`/share`'      'Share the session'
+      aa_row '`/undo`'       'Undo the last change'
+      aa_row '`Esc`'         'Interrupt the agent'
+      aa_row '`Ctrl` + `C`'  'Exit' ;;
     aider)
       aa_row '`/add`'        'Add files to the chat'
       aa_row '`/drop`'       'Remove files from the chat'
-      aa_row '`/undo`'       'Undo the last commit'
-      aa_row '`/diff`'       'Show pending changes'
+      aa_row '`/ask`'        'Ask without editing'
+      aa_row '`/architect`'  'Plan, then edit'
+      aa_row '`/diff`'       'Diff since the last message'
+      aa_row '`/undo`'       "Undo aider's last commit"
       aa_row '`/run`'        'Run a shell command'
-      aa_row '`Ctrl` + `C`'  'Cancel or quit' ;;
+      aa_row '`/exit`'       'Quit aider' ;;
     gemini)
-      aa_row '`/help`'       'Show help'
-      aa_row '`/clear`'      'Clear the screen'
-      aa_row '`/chat`'       'Manage chat history'
-      aa_row '`/tools`'      'List available tools'
-      aa_row '`Ctrl` + `C`'  'Quit' ;;
+      aa_row '`/help`'              'Show help and commands'
+      aa_row '`/clear`'             'Clear screen and history'
+      aa_row '`/chat`'              'Save or resume chat history'
+      aa_row '`/tools`'             'List available tools'
+      aa_row '`/mcp`'               'List MCP servers'
+      aa_row '`/memory`'            'Manage GEMINI.md context'
+      aa_row '`Ctrl` + `C` (twice)' 'Cancel, or exit' ;;
     vim)
       aa_row '`i`'    'Insert mode'
       aa_row '`Esc`'  'Normal mode'

@@ -7,7 +7,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$VERSION  = '1.5.0'
+$VERSION  = '1.5.1'
 $REPO     = 'Suhaas-code/shortcuts-cmd'
 $BASE_URL = "https://github.com/$REPO/releases/latest/download"
 
@@ -365,40 +365,51 @@ function Invoke-Uninstall([string[]] $Argv) {
 # section text produced here is kept byte-identical with shortcuts.sh.
 $script:ToolLibrary = @(
     @{ Exe = 'claude'; Name = 'Claude Code'; Rows = @(
-        @('`/help`',       'Show slash commands'),
-        @('`/clear`',      'Clear conversation history'),
-        @('`/model`',      'Switch the active model'),
-        @('`Esc`',         'Interrupt Claude'),
-        @('`Ctrl` + `C`',  'Quit')
+        @('`/model`',        'Switch the active model'),
+        @('`/clear`',        'Start a fresh conversation'),
+        @('`/diff`',         'View uncommitted changes'),
+        @('`Ctrl` + `C`',    'Cancel current operation'),
+        @('`Esc`',           'Cancel input'),
+        @('`Ctrl` + `J`',    'Insert a newline'),
+        @('`Ctrl` + `D`',    'Exit Claude Code')
     )},
     @{ Exe = 'codex'; Name = 'Codex'; Rows = @(
-        @('`/help`',       'Show commands'),
-        @('`/model`',      'Change the model'),
-        @('`/clear`',      'Clear the conversation'),
-        @('`Esc`',         'Interrupt'),
-        @('`Ctrl` + `C`',  'Quit')
+        @('`/model`',            'Change model & reasoning effort'),
+        @('`/approvals`',        'Set what Codex can do'),
+        @('`/init`',             'Create an AGENTS.md file'),
+        @('`/new`',              'Start a new chat'),
+        @('`/diff`',             'Show the git diff'),
+        @('`Esc`',               'Interrupt the current task'),
+        @('`Ctrl` + `C` (twice)', 'Quit Codex')
     )},
     @{ Exe = 'opencode'; Name = 'opencode'; Rows = @(
-        @('`/help`',       'Show help'),
-        @('`/models`',     'Switch model'),
-        @('`/clear`',      'Clear the session'),
-        @('`/init`',       'Initialize the project'),
-        @('`Ctrl` + `C`',  'Quit')
+        @('`/init`',       'Set up an AGENTS.md file'),
+        @('`/new`',        'Start a new session'),
+        @('`/models`',     'List and switch model'),
+        @('`/sessions`',   'Switch sessions'),
+        @('`/share`',      'Share the session'),
+        @('`/undo`',       'Undo the last change'),
+        @('`Esc`',         'Interrupt the agent'),
+        @('`Ctrl` + `C`',  'Exit')
     )},
     @{ Exe = 'aider'; Name = 'Aider'; Rows = @(
         @('`/add`',        'Add files to the chat'),
         @('`/drop`',       'Remove files from the chat'),
-        @('`/undo`',       'Undo the last commit'),
-        @('`/diff`',       'Show pending changes'),
+        @('`/ask`',        'Ask without editing'),
+        @('`/architect`',  'Plan, then edit'),
+        @('`/diff`',       'Diff since the last message'),
+        @('`/undo`',       "Undo aider's last commit"),
         @('`/run`',        'Run a shell command'),
-        @('`Ctrl` + `C`',  'Cancel or quit')
+        @('`/exit`',       'Quit aider')
     )},
     @{ Exe = 'gemini'; Name = 'Gemini'; Rows = @(
-        @('`/help`',       'Show help'),
-        @('`/clear`',      'Clear the screen'),
-        @('`/chat`',       'Manage chat history'),
-        @('`/tools`',      'List available tools'),
-        @('`Ctrl` + `C`',  'Quit')
+        @('`/help`',              'Show help and commands'),
+        @('`/clear`',             'Clear screen and history'),
+        @('`/chat`',              'Save or resume chat history'),
+        @('`/tools`',             'List available tools'),
+        @('`/mcp`',               'List MCP servers'),
+        @('`/memory`',            'Manage GEMINI.md context'),
+        @('`Ctrl` + `C` (twice)', 'Cancel, or exit')
     )},
     @{ Exe = 'vim'; Name = 'Vim'; Rows = @(
         @('`i`',    'Insert mode'),
