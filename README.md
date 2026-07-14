@@ -80,6 +80,8 @@ Alt + Shift + +           Split pane
 Opening shortcuts in the default editor...
 ```
 
+![Screenshot showing shortcuts command output in PowerShell with colored sections for Panes and Claude Code shortcuts](docs/screenshot-2.png)
+
 ## Commands
 
 | Command | What it does |
