@@ -7,12 +7,24 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$VERSION  = '1.5.1'
+$VERSION  = '1.6.0'
 $REPO     = 'Suhaas-code/shortcuts-cmd'
 $BASE_URL = "https://github.com/$REPO/releases/latest/download"
 
 function Get-ConfigDir { Join-Path $env:APPDATA 'shortcuts' }
 function Get-DataFile  { Join-Path (Get-ConfigDir) 'shortcuts.txt' }
+
+$RESERVED_WORDS = @('list','edit','search','find','autoadd','path','where','reset','update','upgrade','version','uninstall','remove','help','new','rm','pages','default','-v','--version','-h','--help')
+
+function Test-Reserved([string] $Name) { $RESERVED_WORDS -contains $Name.ToLower() }
+
+function Get-PageFile([string] $Name) { # empty name = default file; dies on bad chars
+    if (-not $Name) { return Get-DataFile }
+    if ($Name -match '^-' -or $Name -notmatch '^[A-Za-z0-9_-]+$') {
+        Die "invalid page name `"$Name`" (use letters, digits, - or _ only)"
+    }
+    Join-Path (Get-ConfigDir) "shortcuts-$Name.txt"
+}
 
 # --- colors ----------------------------------------------------------------
 $script:UseColor = (-not $env:NO_COLOR) -and (-not [Console]::IsOutputRedirected)
@@ -137,8 +149,8 @@ function Confirm-Data {
 # Parses the data file into sections and prints aligned/colored output.
 # Markdown-lite supported: #/##/### headings, --- horizontal rule, **bold**,
 # *italic* / _italic_. // comment lines and `key`<TAB>desc rows are unchanged.
-function Show-Shortcuts([string] $Filter) {
-    $lines = Get-Content -LiteralPath (Get-DataFile)
+function Show-Shortcuts([string] $Filter, [string] $PageName = '') {
+    $lines = Get-Content -LiteralPath (Get-PageFile $PageName)
     Read-ColorDirectives $lines
     $cHdr = ConvertTo-Ansi $script:SpecHeader
     $cKey = ConvertTo-Ansi $script:SpecKey
@@ -217,13 +229,20 @@ function Show-Shortcuts([string] $Filter) {
 }
 
 # --- commands --------------------------------------------------------------
-function Invoke-Edit {
-    Confirm-Data
-    $df = Get-DataFile
+function Invoke-Edit([string[]] $Argv) {
+    $name = $Argv[0]
+    if ($name) {
+        if (Test-Reserved $name) { Die "`"$name`" is a reserved command name, not a page" }
+        $pf = Get-PageFile $name
+        if (-not (Test-Path $pf)) { Die "no such page `"$name`". Create it: shortcuts new $name" }
+    } else {
+        Confirm-Data
+        $pf = Get-DataFile
+    }
     $ed = $env:EDITOR
     if (-not $ed) { $ed = 'notepad' }
     Write-Host 'Opening shortcuts in the default editor...'
-    & $ed $df
+    & $ed $pf
 }
 
 function Invoke-Reset([string[]] $Argv) {
@@ -236,6 +255,45 @@ function Invoke-Reset([string[]] $Argv) {
     New-Item -ItemType Directory -Force -Path (Get-ConfigDir) | Out-Null
     Get-File "$BASE_URL/windows.txt" $df
     Write-Host "Restored defaults to $df"
+}
+
+function Invoke-New([string[]] $Argv) {
+    $name = $Argv[0]
+    if (-not $name) { Die 'usage: shortcuts new <name>' }
+    if (Test-Reserved $name) { Die "`"$name`" is a reserved command name, pick another" }
+    $pf = Get-PageFile $name
+    if (Test-Path $pf) { Die "page `"$name`" already exists. Edit: shortcuts edit $name" }
+    New-Item -ItemType Directory -Force -Path (Get-ConfigDir) | Out-Null
+    "# $name" | Set-Content -LiteralPath $pf
+    Write-Host "Created page `"$name`" at $pf"
+    Write-Host "Edit it: shortcuts edit $name"
+}
+
+function Invoke-Rm([string[]] $Argv) {
+    $name = $Argv[0]
+    $yes = ($Argv -contains '-y') -or ($Argv -contains '--yes')
+    if (-not $name) { Die 'usage: shortcuts rm <name> [-y]' }
+    if (Test-Reserved $name) { Die "`"$name`" is a reserved command name, not a page" }
+    $pf = Get-PageFile $name
+    if (-not (Test-Path $pf)) { Die "no such page `"$name`"" }
+    if (-not $yes) {
+        $ans = Read-Host "Delete page `"$name`" ($pf)? [y/N]"
+        if ($ans -notmatch '^(y|yes)$') { Die 'cancelled' }
+    }
+    Remove-Item -Force $pf
+    Write-Host "Deleted page `"$name`""
+}
+
+function Show-Pages {
+    $cfg = Get-ConfigDir
+    $df = Get-DataFile
+    $found = $false
+    if (Test-Path $df) { Write-Host 'default'; $found = $true }
+    Get-ChildItem -Path $cfg -Filter 'shortcuts-*.txt' -File -ErrorAction SilentlyContinue | ForEach-Object {
+        Write-Host ($_.BaseName -replace '^shortcuts-', '')
+        $found = $true
+    }
+    if (-not $found) { Write-Host 'No pages yet. Create one: shortcuts new <name>' }
 }
 
 function Invoke-Update {
@@ -527,9 +585,13 @@ shortcuts v$VERSION — keyboard-shortcut cheat sheet
 
 Usage: shortcuts [command]
   (none)           Print shortcuts
+  <page>           Print a named page
+  new <name>       Create a new page
+  rm <name> [-y]   Delete a page
+  pages            List pages
   search <term>    Filter by keyword or section heading
   autoadd [-y]     Add shortcuts for detected CLI tools
-  edit             Edit in `$env:EDITOR (else notepad)
+  edit [page]      Edit in `$env:EDITOR (else notepad)
   path             Print data file path
   reset [-y]       Restore defaults
   update           Update the script
@@ -544,7 +606,7 @@ Data: $(Get-DataFile)
 switch ($Command.ToLower()) {
     ''          { Confirm-Data; Show-Shortcuts '' }
     'list'      { Confirm-Data; Show-Shortcuts '' }
-    'edit'      { Invoke-Edit }
+    'edit'      { Invoke-Edit $Rest }
     { $_ -in 'search','find' } {
         if (-not $Rest -or -not $Rest[0]) { Die 'usage: shortcuts search <term>' }
         Confirm-Data; Show-Shortcuts $Rest[0]
@@ -555,6 +617,16 @@ switch ($Command.ToLower()) {
     { $_ -in 'update','upgrade' } { Invoke-Update }
     { $_ -in 'version','-v','--version' } { Show-Version }
     { $_ -in 'uninstall','remove' } { Invoke-Uninstall $Rest }
+    'new'       { Invoke-New $Rest }
+    'rm'        { Invoke-Rm $Rest }
+    'pages'     { Show-Pages }
     { $_ -in 'help','-h','--help' } { Show-Help }
-    default     { Write-Host "shortcuts: unknown command `"$Command`"`n"; Show-Help; exit 1 }
+    default {
+        $pf = Get-PageFile $Command
+        if (Test-Path $pf) {
+            Show-Shortcuts '' $Command
+        } else {
+            Write-Host "shortcuts: unknown command `"$Command`"`n"; Show-Help; exit 1
+        }
+    }
 }

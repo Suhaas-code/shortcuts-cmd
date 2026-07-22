@@ -53,6 +53,17 @@ The installers and the `reset` / first-run paths pick a seed file by OS:
 `shortcuts.txt` remains as a generic fallback and for backward compatibility
 with older installs that fetch it by name.
 
+## Pages
+
+`shortcuts new <name>` creates additional pages as flat files,
+`shortcuts-<name>.txt`, in the same config directory as `shortcuts.txt` — no
+subdirectory. They're purely local: there's no remote seed for a page, so
+`reset` and the auto-download-on-first-run path only ever touch
+`shortcuts.txt`, never a named page. Because they live inside the config
+directory, `uninstall`'s existing whole-directory removal deletes every page
+along with the default sheet — no separate cleanup logic needed. See
+[CLI Reference](reference.md#shortcuts-page) for the full command set.
+
 ## Distribution
 
 Distribution is via GitHub Releases. The install one-liners and `shortcuts

@@ -10,6 +10,10 @@ implement identical commands and produce byte-identical output — see
 | Command | Summary |
 |---|---|
 | [`shortcuts`](#shortcuts) | Print your shortcuts |
+| [`<page>`](#shortcuts-page) | Print a named page |
+| [`new <name>`](#shortcuts-new-name) | Create a new page |
+| [`rm <name> [-y]`](#shortcuts-rm-name) | Delete a page |
+| [`pages`](#shortcuts-pages) | List pages |
 | [`search <term>`](#shortcuts-search-term) | Filter by keyword or section heading |
 | [`autoadd [-y]`](#shortcuts-autoadd) | Add starter shortcuts for detected CLI tools |
 | [`edit`](#shortcuts-edit) | Open your shortcuts in your editor |
@@ -24,7 +28,9 @@ A command that needs the data file (`shortcuts`, `search`, `edit`, `autoadd`)
 downloads the environment-matched default automatically on first run if none
 exists yet — [`reset`](#shortcuts-reset) re-downloads it *every* time it runs,
 by design. `path`, `version`, `update`, `uninstall`, and `help` never trigger
-that download.
+that download. Named pages (`<page>`, `new`, `rm`, `edit <page>`, `pages`)
+never trigger it either — there's no remote seed for a page, so a missing or
+invalid page name is always an error, not a download.
 
 Any unrecognized command prints usage and exits `1` — to stderr on
 `shortcuts.sh`; `shortcuts.ps1` writes it via `Write-Host`, which lands on the
@@ -51,6 +57,77 @@ Alt + Shift + +           Split pane
 Alt + Shift + -           Split pane horizontally
 ...
 ```
+
+---
+
+## `shortcuts <page>`
+
+```console
+shortcuts <name>
+```
+
+Prints a named page — a second (or third, ...) shortcut sheet alongside your
+default one, stored as its own file. Only reachable by bare name if `<name>`
+isn't one of the reserved command words below and a page by that name
+already exists (see [`new`](#shortcuts-new-name)); otherwise this is the
+"unrecognized command" path.
+
+Page names are restricted to `A-Z`, `a-z`, `0-9`, `-`, and `_`, and can't
+start with `-` — enforced everywhere a page name is accepted (`<page>`,
+`new`, `rm`, `edit <page>`), so a name can never resolve outside the config
+directory.
+
+Reserved words (can't be used as a page name): `list`, `edit`, `search`,
+`find`, `autoadd`, `path`, `where`, `reset`, `update`, `upgrade`, `version`,
+`uninstall`, `remove`, `help`, `new`, `rm`, `pages`, `default`.
+
+---
+
+## `shortcuts new <name>`
+
+```console
+shortcuts new <name>
+```
+
+Creates a new page: `shortcuts-<name>.txt` in the config directory, seeded
+with a single `# <name>` heading. Errors if `<name>` is missing, reserved, or
+already exists (existing pages are edited, not re-created — see
+[`edit`](#shortcuts-edit)).
+
+```console
+$ shortcuts new alpha
+Created page "alpha" at ~/.config/shortcuts/shortcuts-alpha.txt
+Edit it: shortcuts edit alpha
+```
+
+---
+
+## `shortcuts rm <name>`
+
+```console
+shortcuts rm <name> [-y|--yes]
+```
+
+Deletes a page. Prompts `Delete page "<name>" (<path>)? [y/N]` unless
+`-y`/`--yes` is given. Errors if `<name>` is missing, reserved, or no such
+page exists. The default sheet (`shortcuts.txt`) isn't deletable this way —
+see [`uninstall`](#shortcuts-uninstall) or [`reset`](#shortcuts-reset).
+
+| Flag | Effect |
+|---|---|
+| `-y`, `--yes` | Skip the confirmation prompt |
+
+---
+
+## `shortcuts pages`
+
+```console
+shortcuts pages
+```
+
+Lists every page: `default` (if the data file exists) followed by each
+`shortcuts-<name>.txt` found in the config directory, one name per line. If
+none exist yet, prints a hint to create one.
 
 ---
 
@@ -138,9 +215,13 @@ Append 2 section(s) to ~/.config/shortcuts/shortcuts.txt? [y/N]
 
 ```console
 shortcuts edit
+shortcuts edit <page>
 ```
 
-Opens the data file in your editor. Editor resolution:
+Opens the data file in your editor — or a named page, if given (errors if
+that page doesn't exist yet; see [`new`](#shortcuts-new-name)). This is also
+how you update an existing page, since there's no separate `update`-a-page
+command. Editor resolution:
 
 - **PowerShell:** `$env:EDITOR`, else `notepad`.
 - **POSIX:** `$VISUAL`, then `$EDITOR`, then the first of `nano`, `vim`, `vi`

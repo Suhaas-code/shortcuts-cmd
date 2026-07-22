@@ -3,7 +3,7 @@
 # https://github.com/Suhaas-code/shortcuts-cmd
 set -euo pipefail
 
-VERSION="1.5.1"
+VERSION="1.6.0"
 REPO="Suhaas-code/shortcuts-cmd"
 BASE_URL="https://github.com/${REPO}/releases/latest/download"
 
@@ -22,6 +22,23 @@ config_dir() {
 }
 data_file() {
   printf '%s/shortcuts.txt' "$(config_dir)"
+}
+
+RESERVED_WORDS="list edit search find autoadd path where reset update upgrade version uninstall remove help new rm pages default -v --version -h --help"
+
+is_reserved() { # word -> 0 (true) if reserved
+  case " $RESERVED_WORDS " in *" $1 "*) return 0 ;; esac
+  return 1
+}
+
+page_file() { # [name] -> path; empty name = default file; dies on bad chars
+  local name="${1:-}"
+  [ -n "$name" ] || { data_file; return; }
+  case "$name" in
+    -*) die "invalid page name \"$name\" (can't start with -)" ;;
+    *[!A-Za-z0-9_-]*) die "invalid page name \"$name\" (use letters, digits, - or _ only)" ;;
+  esac
+  printf '%s/shortcuts-%s.txt' "$(config_dir)" "$name"
 }
 
 # --- colors ----------------------------------------------------------------
@@ -241,16 +258,30 @@ detect_env() {
 }
 
 # --- commands --------------------------------------------------------------
-cmd_list()   { ensure_data; parse_color_directives "$(data_file)"; render "" < "$(data_file)"; }
+cmd_list() { # [name]
+  local name="${1:-}" pf
+  if [ -n "$name" ]; then pf="$(page_file "$name")"
+  else ensure_data; pf="$(data_file)"
+  fi
+  parse_color_directives "$pf"
+  render "" < "$pf"
+}
 cmd_search() {
   [ -n "${1:-}" ] || die "usage: shortcuts search <term>"
   ensure_data; parse_color_directives "$(data_file)"; render "$1" < "$(data_file)"
 }
 cmd_path()   { printf '%s\n' "$(data_file)"; }
 
-cmd_edit() {
-  ensure_data
-  local ed df; df="$(data_file)"
+cmd_edit() { # [name]
+  local name="${1:-}" ed pf
+  if [ -n "$name" ]; then
+    is_reserved "$name" && die "\"$name\" is a reserved command name, not a page"
+    pf="$(page_file "$name")"
+    [ -f "$pf" ] || die "no such page \"$name\". Create it: shortcuts new $name"
+  else
+    ensure_data
+    pf="$(data_file)"
+  fi
   ed="${VISUAL:-${EDITOR:-}}"
   if [ -z "$ed" ]; then
     for c in nano vim vi; do have "$c" && { ed="$c"; break; }; done
@@ -258,7 +289,48 @@ cmd_edit() {
   [ -n "$ed" ] || die "no editor found. Set \$EDITOR."
   printf 'Opening shortcuts in the default editor...\n'
   # shellcheck disable=SC2086
-  $ed "$df"
+  $ed "$pf"
+}
+
+cmd_new() { # name
+  local name="${1:-}" pf
+  [ -n "$name" ] || die "usage: shortcuts new <name>"
+  is_reserved "$name" && die "\"$name\" is a reserved command name, pick another"
+  pf="$(page_file "$name")"
+  [ -f "$pf" ] && die "page \"$name\" already exists. Edit: shortcuts edit $name"
+  mkdir -p "$(config_dir)"
+  printf '# %s\n' "$name" > "$pf"
+  printf 'Created page "%s" at %s\n' "$name" "$pf"
+  printf 'Edit it: shortcuts edit %s\n' "$name"
+}
+
+cmd_rm() { # name [-y]
+  local name="${1:-}" yes="" pf ans
+  case "${2:-}" in -y|--yes) yes=1 ;; esac
+  [ -n "$name" ] || die "usage: shortcuts rm <name> [-y]"
+  is_reserved "$name" && die "\"$name\" is a reserved command name, not a page"
+  pf="$(page_file "$name")"
+  [ -f "$pf" ] || die "no such page \"$name\""
+  if [ -z "$yes" ]; then
+    printf 'Delete page "%s" (%s)? [y/N] ' "$name" "$pf"
+    read -r ans
+    case "$ans" in y|Y|yes|YES) ;; *) die "cancelled" ;; esac
+  fi
+  rm -f "$pf"
+  printf 'Deleted page "%s"\n' "$name"
+}
+
+cmd_pages() {
+  local cfg df pf name found=0
+  cfg="$(config_dir)"; df="$(data_file)"
+  [ -f "$df" ] && { printf 'default\n'; found=1; }
+  for pf in "$cfg"/shortcuts-*.txt; do
+    [ -e "$pf" ] || continue
+    name="$(basename "$pf" .txt)"; name="${name#shortcuts-}"
+    printf '%s\n' "$name"
+    found=1
+  done
+  [ "$found" -eq 1 ] || printf 'No pages yet. Create one: shortcuts new <name>\n'
 }
 
 cmd_reset() {
@@ -573,9 +645,13 @@ shortcuts v${VERSION} — keyboard-shortcut cheat sheet
 
 Usage: shortcuts [command]
   (none)           Print shortcuts
+  <page>           Print a named page
+  new <name>       Create a new page
+  rm <name> [-y]   Delete a page
+  pages            List pages
   search <term>    Filter by keyword or section heading
   autoadd [-y]     Add shortcuts for detected CLI tools
-  edit             Edit in \$EDITOR
+  edit [page]      Edit in \$EDITOR
   path             Print data file path
   reset [-y]       Restore defaults
   update           Update the script
@@ -590,7 +666,7 @@ EOF
 main() {
   case "${1:-}" in
     ""|list)            cmd_list ;;
-    edit)               cmd_edit ;;
+    edit)               shift; cmd_edit "${1:-}" ;;
     search|find)        shift; cmd_search "${1:-}" ;;
     autoadd)            shift; cmd_autoadd "${1:-}" ;;
     path|where)         cmd_path ;;
@@ -598,8 +674,17 @@ main() {
     update|upgrade)     cmd_update ;;
     version|-v|--version) cmd_version ;;
     uninstall|remove)   shift; cmd_uninstall "${1:-}" ;;
+    new)                shift; cmd_new "${1:-}" ;;
+    rm)                 shift; cmd_rm "${1:-}" "${2:-}" ;;
+    pages)              cmd_pages ;;
     help|-h|--help)     cmd_help ;;
-    *)                  printf 'shortcuts: unknown command "%s"\n\n' "$1" >&2; cmd_help >&2; exit 1 ;;
+    *)
+      if [ -f "$(page_file "$1")" ]; then
+        cmd_list "$1"
+      else
+        printf 'shortcuts: unknown command "%s"\n\n' "$1" >&2; cmd_help >&2; exit 1
+      fi
+      ;;
   esac
 }
 

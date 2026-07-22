@@ -87,9 +87,13 @@ Opening shortcuts in the default editor...
 | Command | What it does |
 |---|---|
 | `shortcuts` | Print your shortcuts |
+| `shortcuts <page>` | Print a named page |
+| `shortcuts new <name>` | Create a new page |
+| `shortcuts rm <name> [-y]` | Delete a page |
+| `shortcuts pages` | List pages |
 | `shortcuts search <term>` | Filter by keyword — or by section heading to show the whole section |
 | `shortcuts autoadd [-y]` | Detect installed CLI tools and add a starter shortcut section for each |
-| `shortcuts edit` | Open your shortcuts in your editor |
+| `shortcuts edit [page]` | Open your shortcuts (or a named page) in your editor |
 | `shortcuts path` | Print the data file path |
 | `shortcuts reset [-y]` | Restore the default shortcuts |
 | `shortcuts update` | Update the `shortcuts` script itself |
